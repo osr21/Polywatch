@@ -48,6 +48,9 @@ Thumbs.db
 .cache/
 .local/
 
+# Agent memory — contains project-specific notes, do not publish
+.agents/
+
 # Environment secrets — never commit
 .env
 .env.*

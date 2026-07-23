@@ -18,9 +18,3 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
-
-[userenv]
-
-[userenv.shared]
-RELAYER_API_KEY_ADDRESS = "0xB14436dECe0E552b06ad88dC32e5644eBCbA8F4D"
-NOTIFY_EMAIL = "tobimax241@gmail.com"

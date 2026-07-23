@@ -23,7 +23,7 @@ Polymarket uses a **dual-wallet model**:
 
 ## For this project
 
-- EOA (MetaMask wallet, has private key): `0xB14436dECe0E552b06ad88dC32e5644eBCbA8F4D`
-- Proxy/API wallet (for CLOB): `0xe3e93099cd97743127794245b56a766dea527302`
-- `POLY_ADDRESS` secret must be `0xe3e93099...` (proxy wallet)
-- `POLY_PRIVATE_KEY` is the EOA key for `0xB14436...` — derivation will log a warning and fail with 400, env-var credentials are used directly
+- EOA (MetaMask wallet, has private key): set via `POLY_PRIVATE_KEY` secret — do not hardcode address here
+- Proxy/API wallet (for CLOB): set via `POLY_ADDRESS` secret — see polymarket.com/settings Builder tab
+- `POLY_ADDRESS` secret must be the proxy wallet address (not the EOA address)
+- `POLY_PRIVATE_KEY` is the EOA key — derivation will log a warning and fail with 400, env-var credentials are used directly
