@@ -1,0 +1,14 @@
+- [Orval path+query param collision](orval-params-collision.md) — endpoints with both path AND query params generate duplicate *Params types causing TS2308; remove query params from those endpoints
+- [React Query peerDep fix](react-query-peerdep.md) — @tanstack/react-query must be peerDependency in lib/api-client-react and in vite dedupe list or hooks silently break
+- [Polymarket proxy wallet](polymarket-proxy-wallet.md) — CLOB API uses a proxy wallet address (not the main EOA); find it on polymarket.com/settings Builder tab labeled "For API use only"
+- [Polymarket CLOB Cloudflare block](polymarket-clob-cloudflare.md) — clob.polymarket.com blocks most endpoints from cloud/server IPs via CF Bot Fight Mode; only /auth/* passes through; do not use live CLOB ping as a health check
+- [Polymarket CLOB L2 header names](polymarket-clob-headers.md) — L2 HMAC headers use underscores (POLY_ADDRESS, POLY_API_KEY, POLY_PASSPHRASE, POLY_SIGNATURE, POLY_TIMESTAMP) matching the official JS client, NOT hyphens as the Python client uses
+- [Polymarket profile enrichment condition](polymarket-profile-enrichment.md) — trade payloads almost always have name/pseudonym but rarely profileImage; key the gamma profile-fetch fallback on missing avatar, not missing name/pseudonym
+- [Frontend access to server-only secrets](frontend-secret-values.md) — expose server env-var values to the frontend via a runtime status endpoint, not an unset VITE_* build-time var (silently renders nothing, no error)
+- [Polymarket position `redeemable` semantics](polymarket-position-redeemable.md) — redeemable:true means the market resolved, NOT that the position won; losing positions are also redeemable with currentValue:0
+- [api-server has no dev watcher](api-server-no-watch.md) — dev script builds once then runs the bundle; restart the workflow after backend route/logic changes before curling
+- [Admin-token gating for single-owner apps](single-owner-app-fund-risk-auth.md) — gate only fund-risk/mutating routes with a shared-secret middleware; keep GETs public; patch raw fetch() calls too
+- [undici Response type conflict with Express](undici-express-response-conflict.md) — Express and undici both export Response; use ReturnType<typeof fetch> as the return type of proxy-fetch helpers to avoid TS2740 errors
+- [CLOB 401 = stale credentials not Cloudflare](clob-401-stale-creds.md) — 401 from authed CLOB routes means env var API keys expired; auto-re-derive on 401 in clobGet/clobPost; always re-derive at startup when private key present; use forward-ref pattern for functions defined later in the file
+- [Orval null param serialization](orval-null-serialization.md) — null query params become the string "null" in URLs; use undefined (or conditional spread) to omit optional params
+- [Security hardening decisions](security-hardening.md) — CORS exact-match fix, rate limiting, requireAdmin on /ai/signals, CONDITION_ID_RE, pnpm overrides for transitive vulns

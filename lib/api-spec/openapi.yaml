@@ -1,0 +1,1817 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: PolyWatch - Polymarket whale wallet tracker API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: whales
+    description: Whale trade tracking
+  - name: markets
+    description: Polymarket market data
+  - name: wallets
+    description: Wallet profiles and analysis
+  - name: bot
+    description: Copy-trade bot configuration and log
+  - name: ai
+    description: AI-powered trade signals
+  - name: leaderboard
+    description: Builder leaderboard and analytics
+  - name: builders
+    description: Builder code analytics (volume time-series and attributed trades)
+  - name: rewards
+    description: Polymarket liquidity rewards
+  - name: orders
+    description: CLOB order management
+  - name: perps
+    description: Perpetual contracts market data
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /whales:
+    get:
+      operationId: getWhaleTrades
+      tags: [whales]
+      summary: Get recent whale trades
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: minSize
+          in: query
+          schema:
+            type: number
+            default: 1000
+      responses:
+        "200":
+          description: List of whale trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WhaleTrade"
+
+  /whales/stats:
+    get:
+      operationId: getWhaleStats
+      tags: [whales]
+      summary: Aggregate whale statistics
+      responses:
+        "200":
+          description: Whale stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WhaleStats"
+
+  /markets:
+    get:
+      operationId: getMarkets
+      tags: [markets]
+      summary: Get active markets with whale enrichment
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: tag
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of markets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Market"
+
+  /markets/momentum:
+    get:
+      operationId: getMarketMomentum
+      tags: [markets]
+      summary: Markets ranked by whale volume velocity
+      parameters:
+        - name: minSize
+          in: query
+          schema:
+            type: number
+            default: 1000
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 4
+      responses:
+        "200":
+          description: Markets sorted by momentum score
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketMomentum"
+
+  /markets/{conditionId}/whales:
+    get:
+      operationId: getMarketWhales
+      tags: [markets]
+      summary: Get whale activity for a specific market
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Whale trades for market
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WhaleTrade"
+
+  /markets/{conditionId}/orderbook:
+    get:
+      operationId: getMarketOrderbook
+      tags: [markets]
+      summary: Get CLOB order book for a market
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order book data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderBook"
+
+  /wallets/{address}:
+    get:
+      operationId: getWalletProfile
+      tags: [wallets]
+      summary: Get wallet profile
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Wallet profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletProfile"
+        "404":
+          description: Wallet not found
+
+  /wallets/{address}/trades:
+    get:
+      operationId: getWalletTrades
+      tags: [wallets]
+      summary: Get wallet trade history
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Wallet trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WhaleTrade"
+
+  /wallets/{address}/positions:
+    get:
+      operationId: getWalletPositions
+      tags: [wallets]
+      summary: Get wallet open positions
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Wallet positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Position"
+
+  /portfolio:
+    get:
+      operationId: getPortfolio
+      tags: [wallets]
+      summary: Get my portfolio (positions + P&L from CLOB API)
+      responses:
+        "200":
+          description: Portfolio summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioSummary"
+        "503":
+          description: CLOB credentials not configured
+
+  /bot/execute:
+    post:
+      operationId: executeBotTrade
+      tags: [bot]
+      summary: Manually execute a copy trade
+      security:
+        - adminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExecuteTradeBody"
+      responses:
+        "200":
+          description: Trade result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExecuteTradeResult"
+        "401":
+          description: Admin token required
+        "503":
+          description: CLOB credentials not configured
+
+  /bot/config:
+    get:
+      operationId: getBotConfig
+      tags: [bot]
+      summary: Get copy-trade bot configuration
+      responses:
+        "200":
+          description: Bot config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotConfig"
+    post:
+      operationId: updateBotConfig
+      tags: [bot]
+      summary: Update copy-trade bot configuration
+      security:
+        - adminToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BotConfig"
+      responses:
+        "200":
+          description: Updated bot config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotConfig"
+        "401":
+          description: Admin token required
+
+  /bot/log:
+    get:
+      operationId: getBotLog
+      tags: [bot]
+      summary: Get copy-trade bot activity log
+      responses:
+        "200":
+          description: Bot trade log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BotTrade"
+    delete:
+      operationId: clearBotLog
+      tags: [bot]
+      summary: Clear bot activity log
+      security:
+        - adminToken: []
+      responses:
+        "200":
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        "401":
+          description: Admin token required
+
+  /orders:
+    get:
+      operationId: getOpenOrders
+      tags: [orders]
+      summary: List my open orders on the CLOB
+      responses:
+        "200":
+          description: List of open orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenOrder"
+        "503":
+          description: CLOB credentials not configured
+    delete:
+      operationId: cancelAllOrders
+      tags: [orders]
+      summary: Cancel all open orders
+      security:
+        - adminToken: []
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelResult"
+        "401":
+          description: Admin token required
+        "503":
+          description: CLOB credentials not configured
+
+  /orders/{orderId}:
+    delete:
+      operationId: cancelOrder
+      tags: [orders]
+      summary: Cancel a single order
+      security:
+        - adminToken: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelResult"
+        "401":
+          description: Admin token required
+        "503":
+          description: CLOB credentials not configured
+
+  /portfolio/closed:
+    get:
+      operationId: getClosedPositions
+      tags: [wallets]
+      summary: Get my closed positions
+      responses:
+        "200":
+          description: Closed positions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClosedPosition"
+        "503":
+          description: CLOB credentials not configured
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Builder leaderboard
+      parameters:
+        - name: timePeriod
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH, ALL]
+            default: WEEK
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /builders/volume:
+    get:
+      operationId: getBuilderVolume
+      tags: [builders]
+      summary: Builder volume time-series (extends the leaderboard with historical buckets)
+      parameters:
+        - name: timePeriod
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH, ALL]
+            default: WEEK
+        - name: builderCode
+          in: query
+          description: Filter the time-series down to a single builder code
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Builder volume time-series entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BuilderVolumeEntry"
+
+  /builders/trades:
+    get:
+      operationId: getBuilderTrades
+      tags: [builders]
+      summary: Raw trades attributed to a builder code
+      parameters:
+        - name: builderCode
+          in: query
+          description: Defaults to this app's configured builder code when omitted
+          schema:
+            type: ["string", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Builder-attributed trades
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuilderTradesResponse"
+        "400":
+          description: builderCode query param required
+
+  /builders/fees/summary:
+    get:
+      operationId: getBuilderFeesSummary
+      tags: [builders]
+      summary: Aggregate builder fee revenue across recent trades (bounded pagination)
+      parameters:
+        - name: builderCode
+          in: query
+          description: Defaults to this app's configured builder code when omitted
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Aggregated builder fee revenue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuilderFeesSummary"
+        "400":
+          description: builderCode query param required
+
+  /rewards/markets:
+    get:
+      operationId: getRewardMarkets
+      tags: [rewards]
+      summary: Currently active liquidity-reward-eligible markets
+      responses:
+        "200":
+          description: Reward-eligible markets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardMarketsResponse"
+
+  /rewards/user/percentages:
+    get:
+      operationId: getRewardPercentages
+      tags: [rewards]
+      summary: My current per-market reward percentages/rates (authed, may be unavailable from cloud IPs)
+      responses:
+        "200":
+          description: Reward percentages (raw upstream passthrough)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        "502":
+          description: Upstream CLOB call failed (commonly Cloudflare blocking authed calls from cloud IPs)
+        "503":
+          description: CLOB credentials not configured
+
+  /rewards/earnings:
+    get:
+      operationId: getRewardEarnings
+      tags: [rewards]
+      summary: My reward earnings history (authed, paginated, may be unavailable from cloud IPs)
+      responses:
+        "200":
+          description: Reward earnings (raw upstream passthrough)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RewardEarningsResponse"
+        "502":
+          description: Upstream CLOB call failed (commonly Cloudflare blocking authed calls from cloud IPs)
+        "503":
+          description: CLOB credentials not configured
+
+  /ai/signals:
+    post:
+      operationId: analyzeSignals
+      tags: [ai]
+      summary: Get AI-powered whale trade signals
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trades]
+              properties:
+                trades:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/WhaleTrade"
+      responses:
+        "200":
+          description: AI signals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSignalsResponse"
+        "503":
+          description: No API key configured
+
+  /markets/{conditionId}/holders:
+    get:
+      operationId: getMarketHolders
+      tags: [markets]
+      summary: Top token holders for a market
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Top holders per outcome
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketHolder"
+
+  /market-price-history:
+    get:
+      operationId: getMarketPriceHistory
+      tags: [markets]
+      summary: Price history for a market outcome token
+      parameters:
+        - name: conditionId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: interval
+          in: query
+          schema:
+            type: string
+            enum: [1m, 1w, 1d, 6h, 1h, max]
+            default: 1w
+      responses:
+        "200":
+          description: Price history for each outcome
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceHistory"
+        "404":
+          description: Market not found
+
+  /markets/{conditionId}/comments:
+    get:
+      operationId: getMarketComments
+      tags: [markets]
+      summary: Recent comments on a market
+      parameters:
+        - name: conditionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Market comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MarketComment"
+
+  /trader-leaderboard:
+    get:
+      operationId: getTraderLeaderboard
+      tags: [leaderboard]
+      summary: Trader profit/loss leaderboard
+      parameters:
+        - name: timePeriod
+          in: query
+          schema:
+            type: string
+            enum: [DAY, WEEK, MONTH, ALL]
+            default: ALL
+        - name: category
+          in: query
+          schema:
+            type: string
+            default: all
+      responses:
+        "200":
+          description: Trader leaderboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TraderLeaderboardEntry"
+
+  /events:
+    get:
+      operationId: getPolyEvents
+      tags: [markets]
+      summary: Browse Polymarket events (groups of related markets)
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: tag
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: Events list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PolyEvent"
+
+  /perps/instruments:
+    get:
+      operationId: getPerpsInstruments
+      tags: [perps]
+      summary: List available perpetual instruments with live market data
+      responses:
+        "200":
+          description: Perps instruments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerpsInstrument"
+
+  /perps/trades:
+    get:
+      operationId: getPerpsTrades
+      tags: [perps]
+      summary: Recent perpetual trades
+      parameters:
+        - name: instrumentId
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Recent perps trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PerpsTrade"
+
+  /taker-stats:
+    get:
+      operationId: getTakerStats
+      tags: [rewards]
+      summary: My taker rebate tier and 7-day trading stats
+      responses:
+        "200":
+          description: Taker tier and stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TakerStats"
+        "503":
+          description: CLOB credentials not configured
+
+components:
+  securitySchemes:
+    adminToken:
+      type: http
+      scheme: bearer
+      description: >-
+        Shared admin secret (ADMIN_TOKEN) required for endpoints that can
+        move funds or change trading behavior. This app has no user
+        accounts; the owner enters this token once per browser.
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    MarketMomentum:
+      type: object
+      required:
+        - conditionId
+        - title
+        - tradeCount
+        - totalVolume
+        - volume2h
+        - volumePrev2h
+        - velocity
+        - buyPressure
+        - walletCount
+        - avgSize
+      properties:
+        conditionId:
+          type: string
+        title:
+          type: string
+        slug:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        tradeCount:
+          type: integer
+        totalVolume:
+          type: number
+        volume2h:
+          type: number
+        volumePrev2h:
+          type: number
+        velocity:
+          type: number
+        buyPressure:
+          type: number
+        walletCount:
+          type: integer
+        avgSize:
+          type: number
+        topSide:
+          type: string
+          enum: [BUY, SELL]
+
+    WhaleTrade:
+      type: object
+      required:
+        - proxyWallet
+        - side
+        - size
+        - price
+        - timestamp
+        - title
+        - outcome
+        - usdcSize
+        - transactionHash
+      properties:
+        proxyWallet:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        size:
+          type: number
+        price:
+          type: number
+        usdcSize:
+          type: number
+        timestamp:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        icon:
+          type: ["string", "null"]
+        outcome:
+          type: string
+        conditionId:
+          type: ["string", "null"]
+        transactionHash:
+          type: string
+        name:
+          type: ["string", "null"]
+        pseudonym:
+          type: ["string", "null"]
+        profileImage:
+          type: ["string", "null"]
+        riskScore:
+          type: ["number", "null"]
+        walletAgeDays:
+          type: ["number", "null"]
+
+    WhaleStats:
+      type: object
+      required:
+        - totalVolumeUsdc
+        - tradeCount
+        - uniqueWallets
+        - topMarkets
+        - topWallets
+      properties:
+        totalVolumeUsdc:
+          type: number
+        tradeCount:
+          type: integer
+        uniqueWallets:
+          type: integer
+        topMarkets:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketSummary"
+        topWallets:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletSummary"
+
+    MarketSummary:
+      type: object
+      required:
+        - conditionId
+        - title
+        - volumeUsdc
+        - tradeCount
+      properties:
+        conditionId:
+          type: string
+        title:
+          type: string
+        icon:
+          type: ["string", "null"]
+        volumeUsdc:
+          type: number
+        tradeCount:
+          type: integer
+
+    WalletSummary:
+      type: object
+      required:
+        - address
+        - volumeUsdc
+        - tradeCount
+      properties:
+        address:
+          type: string
+        name:
+          type: ["string", "null"]
+        pseudonym:
+          type: ["string", "null"]
+        profileImage:
+          type: ["string", "null"]
+        volumeUsdc:
+          type: number
+        tradeCount:
+          type: integer
+        riskScore:
+          type: number
+        walletAgeDays:
+          type: ["number", "null"]
+
+    Market:
+      type: object
+      required:
+        - id
+        - question
+        - conditionId
+        - slug
+        - liquidity
+        - startDate
+        - endDate
+        - whaleCount
+        - whaleVolume
+        - buyVolume
+        - sellVolume
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        conditionId:
+          type: string
+        slug:
+          type: string
+        liquidity:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        image:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        volume:
+          type: ["string", "null"]
+        active:
+          type: ["boolean", "null"]
+        volume24hr:
+          type: ["number", "null"]
+        volume1wk:
+          type: ["number", "null"]
+        volumeNum:
+          type: ["number", "null"]
+        outcomePrices:
+          type: ["string", "null"]
+        outcomes:
+          type: ["string", "null"]
+        clobTokenIds:
+          type: ["string", "null"]
+        whaleCount:
+          type: integer
+        whaleVolume:
+          type: number
+        buyVolume:
+          type: number
+        sellVolume:
+          type: number
+        topOutcome:
+          type: ["string", "null"]
+        topOutcomeBuyVolume:
+          type: ["number", "null"]
+        topWallet:
+          type: ["string", "null"]
+        topWalletName:
+          type: ["string", "null"]
+        topWalletVolume:
+          type: ["number", "null"]
+        topWalletAgeDays:
+          type: ["number", "null"]
+        topWalletRiskScore:
+          type: ["number", "null"]
+
+    OrderBook:
+      type: object
+      required:
+        - bids
+        - asks
+      properties:
+        tokenId:
+          type: ["string", "null"]
+        lastPrice:
+          type: ["number", "null"]
+        tickSize:
+          type: ["string", "null"]
+        bids:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderBookLevel"
+        asks:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderBookLevel"
+
+    OrderBookLevel:
+      type: object
+      required:
+        - price
+        - size
+      properties:
+        price:
+          type: number
+        size:
+          type: number
+
+    OpenOrder:
+      type: object
+      required:
+        - id
+        - asset
+        - side
+        - size
+        - price
+        - status
+      properties:
+        id:
+          type: string
+        asset:
+          type: ["string", "null"]
+        market:
+          type: ["string", "null"]
+        side:
+          type: string
+          enum: [BUY, SELL]
+        originalSize:
+          type: ["number", "null"]
+        size:
+          type: number
+        price:
+          type: number
+        status:
+          type: string
+        orderType:
+          type: ["string", "null"]
+        createdAt:
+          type: ["integer", "null"]
+        expiresAt:
+          type: ["integer", "null"]
+
+    ClosedPosition:
+      type: object
+      required:
+        - asset
+        - conditionId
+        - size
+        - avgPrice
+        - cashPnl
+        - title
+        - outcome
+      properties:
+        asset:
+          type: string
+        conditionId:
+          type: string
+        size:
+          type: number
+        avgPrice:
+          type: number
+        cashPnl:
+          type: number
+        percentPnl:
+          type: ["number", "null"]
+        title:
+          type: string
+        slug:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        outcome:
+          type: string
+        closedAt:
+          type: ["integer", "null"]
+
+    LeaderboardEntry:
+      type: object
+      required:
+        - builderCode
+        - volumeUsdc
+      properties:
+        builderCode:
+          type: string
+        name:
+          type: ["string", "null"]
+        volumeUsdc:
+          type: number
+        rank:
+          type: ["integer", "null"]
+        tradeCount:
+          type: ["integer", "null"]
+        verified:
+          type: ["boolean", "null"]
+        logo:
+          type: ["string", "null"]
+        address:
+          type: ["string", "null"]
+
+    BuilderVolumeEntry:
+      type: object
+      required:
+        - date
+        - builderCode
+        - volumeUsdc
+      properties:
+        date:
+          type: string
+        builderCode:
+          type: string
+        name:
+          type: ["string", "null"]
+        volumeUsdc:
+          type: number
+        activeUsers:
+          type: ["integer", "null"]
+        rank:
+          type: ["integer", "null"]
+        verified:
+          type: ["boolean", "null"]
+        logo:
+          type: ["string", "null"]
+
+    BuilderTrade:
+      type: object
+      required:
+        - id
+        - market
+        - side
+        - size
+        - sizeUsdc
+        - price
+        - status
+        - outcome
+        - builderCode
+      properties:
+        id:
+          type: string
+        market:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        size:
+          type: number
+        sizeUsdc:
+          type: number
+        price:
+          type: number
+        status:
+          type: string
+        outcome:
+          type: string
+        outcomeIndex:
+          type: ["integer", "null"]
+        transactionHash:
+          type: ["string", "null"]
+        matchTime:
+          type: ["integer", "null"]
+        createdAt:
+          type: ["string", "null"]
+        builderCode:
+          type: string
+        fee:
+          type: ["number", "null"]
+        feeUsdc:
+          type: ["number", "null"]
+
+    BuilderFeesSummary:
+      type: object
+      required:
+        - totalFeeUsdc
+        - tradeCount
+        - feeTradeCount
+        - truncated
+      properties:
+        totalFeeUsdc:
+          type: number
+        tradeCount:
+          type: integer
+        feeTradeCount:
+          type: integer
+        truncated:
+          type: boolean
+
+    BuilderTradesResponse:
+      type: object
+      required:
+        - data
+        - count
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuilderTrade"
+        nextCursor:
+          type: ["string", "null"]
+        count:
+          type: integer
+
+    RewardMarketConfig:
+      type: object
+      required:
+        - assetAddress
+        - startDate
+        - endDate
+        - ratePerDay
+        - totalRewards
+      properties:
+        assetAddress:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        ratePerDay:
+          type: number
+        totalRewards:
+          type: number
+
+    RewardMarket:
+      type: object
+      required:
+        - conditionId
+        - rewardsMaxSpread
+        - rewardsMinSize
+        - nativeDailyRate
+        - totalDailyRate
+        - rewardsConfig
+      properties:
+        conditionId:
+          type: string
+        rewardsMaxSpread:
+          type: number
+        rewardsMinSize:
+          type: number
+        nativeDailyRate:
+          type: number
+        totalDailyRate:
+          type: number
+        rewardsConfig:
+          type: array
+          items:
+            $ref: "#/components/schemas/RewardMarketConfig"
+
+    RewardMarketsResponse:
+      type: object
+      required:
+        - data
+        - count
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RewardMarket"
+        nextCursor:
+          type: ["string", "null"]
+        count:
+          type: integer
+
+    RewardEarningsResponse:
+      type: object
+      required:
+        - data
+        - count
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        nextCursor:
+          type: ["string", "null"]
+        count:
+          type: integer
+
+    CancelResult:
+      type: object
+      required:
+        - ok
+      properties:
+        ok:
+          type: boolean
+        result:
+          type: ["object", "null"]
+          additionalProperties: true
+
+    BotConfig:
+      type: object
+      required:
+        - enabled
+        - targetWallet
+        - minTradeSize
+        - maxTradeSize
+        - copyPct
+        - allowedSides
+        - notifyOnly
+        - orderType
+      properties:
+        enabled:
+          type: boolean
+        targetWallet:
+          type: string
+        minTradeSize:
+          type: number
+        maxTradeSize:
+          type: number
+        copyPct:
+          type: number
+        allowedSides:
+          type: array
+          items:
+            type: string
+            enum: [BUY, SELL]
+        notifyOnly:
+          type: boolean
+        orderType:
+          type: string
+          enum: [GTC, GTD, FOK, FAK]
+        lastPolledAt:
+          type: number
+          description: Unix ms timestamp of the last bot poll cycle (0 = never polled since startup)
+        lastError:
+          type: ["string", "null"]
+          description: Last error message from the bot poll loop, null when healthy
+
+    PortfolioSummary:
+      type: object
+      required:
+        - address
+        - positions
+        - totalValue
+        - totalCost
+        - totalPnl
+        - totalPnlPct
+      properties:
+        address:
+          type: string
+        positions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Position"
+        totalValue:
+          type: number
+        totalCost:
+          type: number
+        totalPnl:
+          type: number
+        totalPnlPct:
+          type: number
+        usdcBalance:
+          type: ["number", "null"]
+
+    ExecuteTradeBody:
+      type: object
+      required:
+        - tokenId
+        - side
+        - usdcSize
+        - outcomeLabel
+        - marketTitle
+      properties:
+        tokenId:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        usdcSize:
+          type: number
+        outcomeLabel:
+          type: string
+        marketTitle:
+          type: string
+        price:
+          type: ["number", "null"]
+
+    ExecuteTradeResult:
+      type: object
+      required:
+        - ok
+        - orderId
+        - status
+        - message
+      properties:
+        ok:
+          type: boolean
+        orderId:
+          type: ["string", "null"]
+        status:
+          type: string
+        message:
+          type: string
+
+    BotTrade:
+      type: object
+      required:
+        - id
+        - originalTx
+        - targetWallet
+        - market
+        - side
+        - outcome
+        - usdcSize
+        - copiedAt
+        - status
+      properties:
+        id:
+          type: string
+        originalTx:
+          type: string
+        targetWallet:
+          type: string
+        market:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        outcome:
+          type: string
+        usdcSize:
+          type: number
+        copiedAt:
+          type: number
+        status:
+          type: string
+          enum: [pending, executed, logged, skipped, error]
+        note:
+          type: ["string", "null"]
+
+    AiSignal:
+      type: object
+      required:
+        - title
+        - insight
+        - signal
+        - confidence
+      properties:
+        title:
+          type: string
+        insight:
+          type: string
+        signal:
+          type: string
+          enum: [bullish, bearish, neutral]
+        confidence:
+          type: string
+          enum: [low, medium, high]
+
+    AiSignalsResponse:
+      type: object
+      required:
+        - insights
+      properties:
+        insights:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiSignal"
+
+    WalletProfile:
+      type: object
+      required:
+        - address
+        - totalVolumeUsdc
+        - tradeCount
+        - walletAgeDays
+        - firstTradeAt
+        - riskScore
+        - riskLabel
+        - riskFactors
+      properties:
+        address:
+          type: string
+        name:
+          type: ["string", "null"]
+        pseudonym:
+          type: ["string", "null"]
+        totalVolumeUsdc:
+          type: number
+        tradeCount:
+          type: integer
+        walletAgeDays:
+          type: number
+        firstTradeAt:
+          type: integer
+        lastTradeAt:
+          type: ["integer", "null"]
+        avgTradeSize:
+          type: ["number", "null"]
+        riskScore:
+          type: number
+        riskLabel:
+          type: string
+          enum: [LOW, MEDIUM, HIGH, CRITICAL]
+        riskFactors:
+          type: array
+          items:
+            type: string
+        winRate:
+          type: ["number", "null"]
+        profileImage:
+          type: ["string", "null"]
+        verifiedBadge:
+          type: boolean
+
+    Position:
+      type: object
+      required:
+        - proxyWallet
+        - asset
+        - conditionId
+        - size
+        - avgPrice
+        - currentValue
+        - title
+        - outcome
+      properties:
+        proxyWallet:
+          type: string
+        asset:
+          type: string
+        conditionId:
+          type: string
+        size:
+          type: number
+        avgPrice:
+          type: number
+        initialValue:
+          type: ["number", "null"]
+        currentValue:
+          type: number
+        cashPnl:
+          type: ["number", "null"]
+        percentPnl:
+          type: ["number", "null"]
+        curPrice:
+          type: ["number", "null"]
+        title:
+          type: string
+        slug:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        outcome:
+          type: string
+        endDate:
+          type: ["string", "null"]
+        redeemable:
+          type: ["boolean", "null"]
+
+    MarketHolder:
+      type: object
+      required: [proxyWallet, balance, outcomeIndex]
+      properties:
+        proxyWallet:
+          type: string
+        pseudonym:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        profileImage:
+          type: ["string", "null"]
+        balance:
+          type: number
+        outcomeIndex:
+          type: integer
+        outcome:
+          type: ["string", "null"]
+
+    PricePoint:
+      type: object
+      required: [t, p]
+      properties:
+        t:
+          type: number
+        p:
+          type: number
+
+    PriceHistory:
+      type: object
+      required: [history, outcomes, tokenIds]
+      properties:
+        history:
+          type: array
+          items:
+            type: array
+            items:
+              $ref: "#/components/schemas/PricePoint"
+        outcomes:
+          type: array
+          items:
+            type: string
+        tokenIds:
+          type: array
+          items:
+            type: string
+
+    MarketComment:
+      type: object
+      required: [id, content, createdAt]
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        author:
+          type: ["string", "null"]
+        pseudonym:
+          type: ["string", "null"]
+        profileImage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        parentEntityId:
+          type: ["integer", "null"]
+        likes:
+          type: ["integer", "null"]
+
+    TraderLeaderboardEntry:
+      type: object
+      required: [rank, address]
+      properties:
+        rank:
+          type: integer
+        address:
+          type: string
+        pseudonym:
+          type: ["string", "null"]
+        name:
+          type: ["string", "null"]
+        profileImage:
+          type: ["string", "null"]
+        pnl:
+          type: ["number", "null"]
+        roi:
+          type: ["number", "null"]
+        volume:
+          type: ["number", "null"]
+        tradesCount:
+          type: ["integer", "null"]
+        verifiedBadge:
+          type: ["boolean", "null"]
+        xUsername:
+          type: ["string", "null"]
+
+    PolyEvent:
+      type: object
+      required: [id, title, slug]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: ["string", "null"]
+        image:
+          type: ["string", "null"]
+        icon:
+          type: ["string", "null"]
+        startDate:
+          type: ["string", "null"]
+        endDate:
+          type: ["string", "null"]
+        volume:
+          type: ["number", "null"]
+        volume24hr:
+          type: ["number", "null"]
+        liquidity:
+          type: ["number", "null"]
+        marketCount:
+          type: ["integer", "null"]
+        markets:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        tags:
+          type: array
+          items:
+            type: string
+
+    PerpsInstrument:
+      type: object
+      required: [id, symbol]
+      properties:
+        id:
+          type: string
+        symbol:
+          type: string
+        baseAsset:
+          type: ["string", "null"]
+        quoteAsset:
+          type: ["string", "null"]
+        indexPrice:
+          type: ["number", "null"]
+        markPrice:
+          type: ["number", "null"]
+        lastPrice:
+          type: ["number", "null"]
+        openInterest:
+          type: ["number", "null"]
+        fundingRate:
+          type: ["number", "null"]
+        volume24h:
+          type: ["number", "null"]
+        change24h:
+          type: ["number", "null"]
+        high24h:
+          type: ["number", "null"]
+        low24h:
+          type: ["number", "null"]
+        category:
+          type: ["string", "null"]
+        maxLeverage:
+          type: ["number", "null"]
+
+    PerpsTrade:
+      type: object
+      required: [id, side, size, price, timestamp]
+      properties:
+        id:
+          type: string
+        side:
+          type: string
+          enum: [BUY, SELL]
+        size:
+          type: number
+        price:
+          type: number
+        timestamp:
+          type: integer
+        instrumentId:
+          type: ["string", "null"]
+        instrumentSymbol:
+          type: ["string", "null"]
+        traderAddress:
+          type: ["string", "null"]
+
+    TakerStats:
+      type: object
+      required: [takerVolume7d, makerVolume7d]
+      properties:
+        takerVolume7d:
+          type: number
+        makerVolume7d:
+          type: number
+        makerShare:
+          type: ["number", "null"]
+        entityMakerShare:
+          type: ["number", "null"]
+        tier:
+          type: ["integer", "null"]
+        tierName:
+          type: ["string", "null"]
+        nextTierVolume:
+          type: ["number", "null"]
+        dailyRebatePct:
+          type: ["number", "null"]
+        estimated30dTakerVol:
+          type: ["number", "null"]

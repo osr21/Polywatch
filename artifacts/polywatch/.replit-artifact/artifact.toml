@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "PolyWatch — Whale Tracker"
+version = "1.0.0"
+id = "artifacts/polywatch"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20909
+
+[services.development]
+run = "pnpm --filter @workspace/polywatch run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/polywatch", "run", "build" ]
+publicDir = "artifacts/polywatch/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20909"
+BASE_PATH = "/"
