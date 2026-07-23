@@ -1088,7 +1088,7 @@ router.delete("/bot/log", requireAdmin, (_req: Request, res: Response) => {
 // ─── Orderbook ───────────────────────────────────────────────────────────────
 router.get("/markets/:conditionId/orderbook", async (req: Request, res: Response) => {
   try {
-    const { conditionId } = req.params;
+    const conditionId = String(req.params.conditionId);
     if (!conditionId || !CONDITION_ID_RE.test(conditionId)) {
       return res.status(400).json({ error: "Invalid conditionId" });
     }
@@ -2664,7 +2664,7 @@ router.post("/settings/notifications/test", requireAdmin, async (_req: Request, 
 <div style="max-width:480px;margin:0 auto;border:1px solid #27272a;border-radius:12px;padding:24px">
   <div style="font-size:16px;font-weight:bold;color:#06b6d4;margin-bottom:12px">✅ Email notifications are working!</div>
   <div style="font-size:12px;color:#9ca3af;line-height:1.6">
-    <b style="color:#e5e7eb">Whale feed alerts</b> — you'll receive an email for any trade ≥ ${formatUsd(WHALE_NOTIFY_THRESHOLD)}.<br><br>
+    <b style="color:#e5e7eb">Whale feed alerts</b> — you'll receive an email for any trade ≥ ${formatUsd(notifyConfig.whaleThreshold)}.<br><br>
     <b style="color:#e5e7eb">AI signals digest</b> — you'll receive an email each time you run an AI analysis on the Signals page.
   </div>
 </div></body></html>`,
@@ -2911,7 +2911,7 @@ const PERPS_API = "https://api.perpetuals.polymarket.com";
 // ─── Market Top Holders ────────────────────────────────────────────────────────
 router.get("/markets/:conditionId/holders", async (req: Request, res: Response) => {
   try {
-    const { conditionId } = req.params;
+    const conditionId = String(req.params.conditionId);
     if (!conditionId || !CONDITION_ID_RE.test(conditionId)) {
       return res.status(400).json({ error: "Invalid conditionId" });
     }
@@ -3003,7 +3003,7 @@ router.get("/market-price-history", async (req: Request, res: Response) => {
 // ─── Market Comments ──────────────────────────────────────────────────────────
 router.get("/markets/:conditionId/comments", async (req: Request, res: Response) => {
   try {
-    const { conditionId } = req.params;
+    const conditionId = String(req.params.conditionId);
     if (!conditionId || !CONDITION_ID_RE.test(conditionId)) {
       return res.status(400).json({ error: "Invalid conditionId" });
     }
